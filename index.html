@@ -549,6 +549,7 @@
             const [error, setError] = React.useState(null);
             const [analyzing, setAnalyzing] = React.useState(false);
             const [dragOver, setDragOver] = React.useState(false);
+            const [sheetSending, setSheetSending] = React.useState(false);
             const fileInputRef = React.useRef(null);
 
             // Ctrl+V 붙여넣기 기능
@@ -835,6 +836,47 @@ IMPORTANT:
                 link.click();
             };
 
+            // Flat Structure로 변환
+            const convertToFlatRow = () => {
+                const flatRow = {};
+                results.forEach(category => {
+                    category.subCategories.forEach(sub => {
+                        const finalValue = sub.value === "기타" && sub.etcDetails 
+                            ? `기타 (${sub.etcDetails})`
+                            : sub.value;
+                        flatRow[sub.name] = finalValue;
+                    });
+                });
+                return flatRow;
+            };
+
+            // Google Sheet에 전송
+            const sendToGoogleSheet = async () => {
+                if (!results) return;
+                
+                try {
+                    setSheetSending(true);
+                    
+                    const rowData = convertToFlatRow();
+                    
+                    const response = await fetch('YOUR_GOOGLE_SHEET_WEBHOOK_URL', {
+                        method: 'POST',
+                        body: JSON.stringify(rowData)
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                        alert('✅ Google Sheet에 저장되었습니다!');
+                    } else {
+                        throw new Error(result.error || '저장 실패');
+                    }
+                } catch (error) {
+                    alert('❌ Sheet 저장 실패: ' + error.message);
+                } finally {
+                    setSheetSending(false);
+                }
+            };
+
             return (
                 <div className="container">
                     <div className="header">
@@ -1039,6 +1081,14 @@ IMPORTANT:
                                     </button>
                                     <button className="btn btn-info" onClick={downloadCSV}>
                                         CSV 다운로드 (.csv)
+                                    </button>
+                                    <button 
+                                        className="btn btn-success" 
+                                        onClick={sendToGoogleSheet}
+                                        disabled={sheetSending}
+                                        style={{marginLeft: '10px'}}
+                                    >
+                                        {sheetSending ? '저장 중...' : '📊 Google Sheet 저장'}
                                     </button>
                                 </div>
                             </div>
